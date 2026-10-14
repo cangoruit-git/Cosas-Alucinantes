@@ -1,0 +1,30 @@
+[project]
+name = "cosas-alucinantes"
+version = "0.1.0"
+description = "Memoria vectorial de Parafantástico: base de datos de información de sus videos, con capas real / sin_confirmar / creencia, consultable por cualquier IA."
+requires-python = ">=3.12"
+dependencies = [
+    "yt-dlp>=2025.1.15",
+    "faster-whisper>=1.1.0",
+    "chromadb>=1.0.0",
+    "sentence-transformers>=3.4.0",
+    "mcp>=1.8.0",
+    "requests>=2.32.0",
+]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.14"
+include = ["pf", "scripts", "tests"]
+venvPath = "."
+venv = ".venv"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "BLE", "W"]
+
+[tool.ruff.format]
+quote-style = "double"

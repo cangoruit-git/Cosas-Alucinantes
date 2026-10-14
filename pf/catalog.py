@@ -11,7 +11,7 @@ import json
 import logging
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import yt_dlp
 
@@ -31,6 +31,7 @@ def _safe_loads(raw: str | None) -> dict:
         logger.warning("Fila con JSON inválido: %r", raw[:80])
         return {}
 
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS videos (
     id          TEXT PRIMARY KEY,          -- id de video de YouTube
@@ -40,10 +41,16 @@ CREATE TABLE IF NOT EXISTS videos (
     view_count  INTEGER,
     upload_date TEXT,                      -- YYYYMMDD (formato YouTube)
     description TEXT,
-    themes      TEXT NOT NULL DEFAULT '[]',-- JSON: {theme: {score, keywords}}
+    themes      TEXT NOT NULL DEFAULT '{}',-- JSON: {theme: {score, keywords}}
     fetched_at  TEXT
 );
 """
+
+_UPSERT_SQL = (
+    "INSERT OR REPLACE INTO videos "
+    "(id, title, url, duration_sec, view_count, upload_date, description, themes, fetched_at) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+)
 
 
 @dataclass
@@ -84,7 +91,7 @@ class ChannelCatalog:
         with yt_dlp.YoutubeDL(opts) as ydl:  # type: ignore[arg-type]
             info = ydl.extract_info(channel_url, download=False)
         rows: list[tuple] = []
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         for e in info.get("entries", []):
             if not e:
                 continue
@@ -92,20 +99,21 @@ class ChannelCatalog:
             if not vid:
                 continue
             title = e.get("title") or "sin título"
-            rows.append((
-                vid,
-                title,
-                e.get("webpage_url") or e.get("url") or f"https://www.youtube.com/watch?v={vid}",
-                e.get("duration") if e.get("duration") else None,
-                e.get("view_count") if e.get("view_count") else None,
-                e.get("upload_date") if e.get("upload_date") else None,
-                None,  # descripción: se enriquece luego
-                "[]",
-                now,
-            ))
+            rows.append(
+                (
+                    vid,
+                    title,
+                    e.get("webpage_url") or e.get("url") or f"https://www.youtube.com/watch?v={vid}",
+                    e.get("duration") if e.get("duration") else None,
+                    e.get("view_count") if e.get("view_count") else None,
+                    e.get("upload_date") if e.get("upload_date") else None,
+                    None,  # descripción: se enriquece luego
+                    "[]",
+                    now,
+                )
+            )
         self._conn.executemany(  # noqa: S608 - consulta parametrizada
-            "INSERT OR REPLACE INTO videos (id, title, url, duration_sec, view_count, upload_date, description, themes, fetched_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            _UPSERT_SQL,
             rows,
         )
         self._conn.commit()
@@ -158,11 +166,15 @@ class ChannelCatalog:
     def save_theme_match(self, video_id: str, match: ThemeMatch) -> None:
         row = self._conn.execute("SELECT themes FROM videos WHERE id = ?", (video_id,)).fetchone()
         themes = _safe_loads(row[0]) if row else {}
+        if not isinstance(themes, dict):  # filas viejas con '[]'
+            themes = {}
         themes[match.theme] = {
             "score": match.score,
             "keywords": match.matched_keywords,
         }
-        self._conn.execute("UPDATE videos SET themes = ? WHERE id = ?", (json.dumps(themes, ensure_ascii=False), video_id))
+        self._conn.execute(
+            "UPDATE videos SET themes = ? WHERE id = ?", (json.dumps(themes, ensure_ascii=False), video_id)
+        )
         self._conn.commit()
 
     # ── helpers ───────────────────────────────────────────────────────────────
