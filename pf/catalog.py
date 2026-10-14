@@ -68,7 +68,6 @@ class Video:
     def is_absent(self) -> bool:
         return self.duration_sec is None or self.duration_sec == 0
 
-
 class ChannelCatalog:
     """Acceso al catálogo persistente del canal."""
 
@@ -180,7 +179,7 @@ class ChannelCatalog:
     # ── helpers ───────────────────────────────────────────────────────────────
     @staticmethod
     def _video_from_row(row) -> Video:
-        return Video(
+        v = Video(
             id=row[0],
             title=row[1],
             url=row[2],
@@ -190,6 +189,9 @@ class ChannelCatalog:
             description=row[6] or "",
             themes=_safe_loads(row[7]),
         )
+        if not isinstance(v.themes, dict):  # filas con '[]' de sincronizaciones viejas
+            v.themes = {}
+        return v
 
     def close(self) -> None:
         self._conn.close()
