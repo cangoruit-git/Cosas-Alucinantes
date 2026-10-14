@@ -1,0 +1,13 @@
+# Entorno
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Datos generados (no versionar contenido descargado)
+data/
+*.whl
+
+# Secretos
+.env

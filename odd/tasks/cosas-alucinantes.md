@@ -1,0 +1,42 @@
+# Cosas-Alucinantes: memoria vectorial de Parafantástico
+
+Cerebro de memoria con la información que dice Parafantástico en sus videos, en base vectorial, consultable por cualquier IA, con 3 capas de evidencia (real / sin confirmar / creencia). Proyecto público en github.com/cangoruit-git/Cosas-Alucinantes.
+
+## Specs
+
+- S1 — Ingestar toda la información que dice Parafantástico en sus videos: *"quiero guardar toda la informacion de lo que dice parafantastico en sus videos"*.
+- S2 — Guardarla en base vectorial como memoria para consultas: *"tenerlo guardado en una base vectorial para que sirva de memoria para que cuando te pregunte algo puedas saber lo que decia el"*.
+- S3 — Tres capas separadas de evidencia: datos conectados con fuentes públicas reales, datos no confirmados, y creencias de personas supersticiosas: *"quiero conectarlo con datos reales publicos, otra parte con datos no confirmado, y otra con creencias que hay de personas supersticiosas"*.
+- S4 — Arquitectura de "cerebro con recuerdos" que cualquier IA pueda conectar y leer (estilo Engram con proyectos): *"se supone que hagamos un tipo de cerebro con recuerdos para que cualquier ia pueda conectarse y leerlo, a partir de eso hablar siendo bastante parecido a lo que hace engram con los proyectos"*.
+- S5 — La capa "real" exige confirmación con información pública relevante: *"para esto los datos deben estar confirmados con informacion real relevante para el tema"*.
+- S6 — Arranque con un solo tema: DIOS Y CRISTO (decisión del usuario, verbatim: "dios y cristo").
+- S7 — Transcripción por Whisper (audio de los videos).
+- S8 — Stack: Python + ChromaDB local, embeddings multilingües locales (sin API keys).
+- S9 — Repositorio: <https://github.com/cangoruit-git/Cosas-Alucinantes> (público, vacío), cuenta GitHub cangoruit-git ya autenticada.
+
+Criterio de capas (editorial, documentado en docs/criterios-capas.md):
+- `real`: la afirmación o el referente existen y están corroborados por una fuente pública verificable (registros, prensa, informes, Wikipedia/Wikidata con fuente). Se marca SOLO con evidencia adjunta.
+- `sin_confirmar`: afirmación del canal sin corroboración pública (por defecto, la mayoría).
+- `creencia`: supersticiones, folklor y creencias populares (no verificables por diseño; se documenta su origen cultural).
+
+## Tasks
+
+- T1 — Setup entorno (venv, deps, ffmpeg, smoke-test imports). Specs S8-S9. Ruta: inline. Commit: `chore: scaffold proyecto Cosas-Alucinantes`.
+- T2 — Módulo catálogo: lista completa de videos del canal (yt-dlp: id, título, URL, duración, fecha, descripción) → `data/catalog.sqlite`. Specs S1, S6. Ruta: inline. Commit: `feat(catalog): ingesta de catálogo del canal`.
+- T3 — Módulo transcripción: descarga audio + Whisper (faster-whisper), por tema, resumible, segmentos JSON con timestamps. Specs S1, S6, S7. Ruta: inline + bash_background para el lote. Commit: `feat(transcribe): transcripción Whisper resumible`.
+- T4 — Módulo chunking: fragmentos superpuestos con metadatos (video_id, título, URL, t_inicio, t_fin). Specs S1, S2. Ruta: inline. Commit: `feat(chunk): fragmentación con contexto`.
+- T5 — Módulo clasificación en 3 capas con criterios documentados; clasificador por defecto + hook opcional de LLM. Specs S3. Ruta: inline. Commit: `feat(classify): capas de evidencia`.
+- T6 — Módulo verificación: extracción de afirmaciones/entidades + corroboración con fuentes públicas (Wikipedia/Wikidata + web), registro de evidencia; gate de la capa `real`. Specs S3, S5. Ruta: inline + worker de revisión. Commit: `feat(verify): corroboración con fuentes públicas`.
+- T7 — Módulo store: ChromaDB con 3 colecciones (real/sin_confirmar/creencia), embeddings locales, upsert. Specs S2, S8. Ruta: inline. Commit: `feat(store): base vectorial ChromaDB`.
+- T8 — Servidor MCP + cliente de consulta: `recall`, `recall_video`, `catalog_search`, `tiers_summary`; cualquier IA se conecta (estilo Engram). Specs S2, S4. Ruta: inline. Commit: `feat(mcp): servidor de memoria para cualquier IA`.
+- T9 — Piloto: correr el pipeline completo sobre el tema dios-cristo, verificar capa `real` con revisión. Specs S5, S6. Ruta: inline + verificación. Commit: `feat(pilot): base del tema dios-cristo`.
+- T10 — Docs: README, criterios de capas, cómo conectar cualquier IA. Spec S4. Ruta: inline. Commit: `docs: README y criterios de capas`.
+- T11 — Push a GitHub (decisión del usuario; cuenta cangoruit-git). Spec S9. Ruta: usuario.
+
+## Log
+
+- L1 (2026-02-17, usuario, verbatim): "quiero guardar toda la informacion de lo que dice parafantastico en sus videos, y tenerlo guardado en una base vectorial para que sirva de memoria para que cuando te pregunte algo puedas saber lo que decia el, ademas quiero conectarlo con datos reales publicos, otra parte con datos no confirmado, y otra con creencias que hay de personas supersticiosas"
+- L2 (usuario, repo): "https://github.com/cangoruit-git/Cosas-Alucinantes.git ese el repo de github, para entrar usa la cuenta de cangoruit" — repo público vacío; cuenta cangoruit-git autenticada.
+- L3 (usuario, respuestas múltiple choice): Alcance = "Solo un tema primero" (tema pendiente de elegir). Texto = "Whisper (transcripción de audio)". Stack = "Python + ChromaDB local". Clasificación (custom, verbatim): "se supone que hagamos un tipo de cerebro con recuerdos para que cualquier ia pueda conectarse y leerlo, a partir de eso hablar siendo bastante parecido a lo que hace engram con los proyectos. para esto los datos deben estar confirmados con informacion real relevante para el tema"
+- L4 (descripción del repo en GitHub): "informacion en base de datos vectorial sobre supersticiones o conspiraciones"
+- L5 (usuario, tema del piloto, verbatim): "dios y cristo"
