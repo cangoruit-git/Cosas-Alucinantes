@@ -40,3 +40,18 @@ Criterio de capas (editorial, documentado en docs/criterios-capas.md):
 - L3 (usuario, respuestas múltiple choice): Alcance = "Solo un tema primero" (tema pendiente de elegir). Texto = "Whisper (transcripción de audio)". Stack = "Python + ChromaDB local". Clasificación (custom, verbatim): "se supone que hagamos un tipo de cerebro con recuerdos para que cualquier ia pueda conectarse y leerlo, a partir de eso hablar siendo bastante parecido a lo que hace engram con los proyectos. para esto los datos deben estar confirmados con informacion real relevante para el tema"
 - L4 (descripción del repo en GitHub): "informacion en base de datos vectorial sobre supersticiones o conspiraciones"
 - L5 (usuario, tema del piloto, verbatim): "dios y cristo"
+- L6 (usuario, estrategia de transcripción): "De a 5 primero" (validar el pipeline completo en 5 videos antes del resto).
+- L7 (decisiones técnicas del entorno, T3): las cookies de navegador no se pueden desencriptar (App-Bound, bug yt-dlp #10927) y el cliente `android` de YouTube saltea el muro anti-bot; PyAV 19 rompió `metadata_errors` y `pf/transcribe.py` aplica un parche compat en runtime.
+
+## Commits (evidencia)
+
+- T1 scaffold: `51010ee`
+- T2 catálogo + matcher: `7594e30`
+- fix catalog themes: `21ce8f6`
+- T4 chunking: `a5af6fe`
+- T5 clasificación: `1ef3081`
+- T6 verificación + criterios: `df0f1a3`
+- T7 store ChromaDB: `6e7ab19`
+- T8 servidor MCP (MCPServer 2.x): `2da19c4`
+- T9 pipeline + script piloto: `7216823`
+- T10 README: `e1ef109`
