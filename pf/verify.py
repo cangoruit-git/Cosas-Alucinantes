@@ -13,6 +13,7 @@ Promoción: `posible_real` -> `real` SOLO si al menos una evidencia veredicta
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from collections.abc import Callable
@@ -22,6 +23,8 @@ from urllib.parse import quote
 import requests
 
 from .classify import TIER_BELIEF, TIER_CANDIDATE, TIER_DEFAULT, classify_text
+
+logger = logging.getLogger(__name__)
 
 WIKI_API = "https://es.wikipedia.org/w/api.php"
 WIKI_REST = "https://es.wikipedia.org/api/rest_v1/page/summary"
@@ -74,43 +77,65 @@ SummaryFn = Callable[[str], dict | None]
 
 
 def _wikipedia_search(term: str, limit: int = 3) -> list[dict]:
-    """Busca artículos en Wikipedia ES; devuelve [{title, snippet}]."""
-    r = requests.get(
-        WIKI_API,
-        params={
-            "action": "query",
-            "list": "search",
-            "srsearch": term,
-            "srlimit": limit,
-            "format": "json",
-            "utf8": 1,
-        },
-        headers={"User-Agent": UA},
-        timeout=25,
-    )
-    r.raise_for_status()
-    return [
-        {"title": h["title"], "snippet": re.sub(r"<[^>]+>", "", h.get("snippet", ""))}
-        for h in r.json().get("query", {}).get("search", [])
-        if h.get("title")
-    ]
+    """Busca artículos en Wikipedia ES; devuelve [{title, snippet}].
+
+    Política cortés: throttle entre requests y un reintento con backoff ante
+    429. Ante cualquier fallo devuelve [] (nunca rompe el lote).
+    """
+    for attempt in range(2):
+        try:
+            time.sleep(0.4)  # throttle: no bombardear la API
+            r = requests.get(
+                WIKI_API,
+                params={
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": term,
+                    "srlimit": limit,
+                    "format": "json",
+                    "utf8": 1,
+                },
+                headers={"User-Agent": UA},
+                timeout=25,
+            )
+            if r.status_code == 429 and attempt == 0:
+                time.sleep(5)
+                continue
+            r.raise_for_status()
+            return [
+                {"title": h["title"], "snippet": re.sub(r"<[^>]+>", "", h.get("snippet", ""))}
+                for h in r.json().get("query", {}).get("search", [])
+                if h.get("title")
+            ]
+        except Exception as exc:  # noqa: BLE001 - degradar, no romper el lote
+            logger.warning("wikipedia search falló (%s): %s", term[:40], exc)
+    return []
 
 
 def _wikipedia_summary(title: str) -> dict | None:
-    """Resumen del artículo (REST summary); None si no existe."""
-    r = requests.get(
-        f"{WIKI_REST}/{quote(title)}",
-        headers={"Accept": "application/json", "User-Agent": UA},
-        timeout=25,
-    )
-    if r.status_code != 200:
-        return None
-    d = r.json()
-    url = (
-        (d.get("content_urls") or {}).get("desktop", {}).get("page", "")
-        or f"https://es.wikipedia.org/wiki/{quote(title)}"
-    )
-    return {"title": d.get("title", title), "extract": d.get("extract", ""), "url": url}
+    """Resumen del artículo (REST summary); None si no existe o falla."""
+    for attempt in range(2):
+        try:
+            time.sleep(0.4)  # throttle
+            r = requests.get(
+                f"{WIKI_REST}/{quote(title)}",
+                headers={"Accept": "application/json", "User-Agent": UA},
+                timeout=25,
+            )
+            if r.status_code == 429 and attempt == 0:
+                time.sleep(5)
+                continue
+            if r.status_code != 200:
+                return None
+            d = r.json()
+            url = (
+                (d.get("content_urls") or {}).get("desktop", {}).get("page", "")
+                or f"https://es.wikipedia.org/wiki/{quote(title)}"
+            )
+            return {"title": d.get("title", title), "extract": d.get("extract", ""), "url": url}
+        except Exception as exc:  # noqa: BLE001 - degradar, no romper el lote
+            logger.warning("wikipedia summary falló (%s): %s", title, exc)
+    return None
 
 
 def _words(text: str) -> set[str]:
@@ -171,10 +196,19 @@ def verify_fact(
     summary_fn = summary_fn or _wikipedia_summary
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     out: list[Evidence] = []
-    for hit in search_fn(fragment[:80]):
+    try:
+        hits = search_fn(fragment[:80])
+    except Exception as exc:  # noqa: BLE001 - degradar, no romper el lote
+        logger.warning("verificación sin fuentes (%s): %s", fragment[:40], exc)
+        return out
+    for hit in hits:
         title = hit["title"]
         snippet = hit["snippet"]
-        summ = summary_fn(title)
+        try:
+            summ = summary_fn(title)
+        except Exception as exc:  # noqa: BLE001 - degradar, no romper el lote
+            logger.debug("sin resumen para %s: %s", title, exc)
+            summ = None
         abstract = (summ or {}).get("extract", "") or ""
         url = (summ or {}).get("url", "") or f"https://es.wikipedia.org/wiki/{quote(title)}"
         score = max(_overlap(fragment, snippet), _overlap(fragment, abstract))
@@ -211,9 +245,18 @@ def verify_belief(
     summary_fn = summary_fn or _wikipedia_summary
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     out: list[Evidence] = []
-    for hit in search_fn(belief_term):
+    try:
+        hits = search_fn(belief_term)
+    except Exception as exc:  # noqa: BLE001 - degradar, no romper el lote
+        logger.warning("doc de creencia sin fuentes (%s): %s", belief_term, exc)
+        return out
+    for hit in hits:
         title = hit["title"]
-        summ = summary_fn(title)
+        try:
+            summ = summary_fn(title)
+        except Exception as exc:  # noqa: BLE001 - degradar, no romper el lote
+            logger.debug("sin resumen para %s: %s", title, exc)
+            summ = None
         abstract = (summ or {}).get("extract", "") or ""
         if not abstract:
             continue

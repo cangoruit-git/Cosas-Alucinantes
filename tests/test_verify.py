@@ -6,9 +6,12 @@ Cobertura:
 - contexto (solapamiento medio) NO promueve
 - verificación de creencias documenta el término folklor
 - extract_fragments corta oraciones largas
+- 429 (rate limit) degrada sin crashear
 """
 
 from __future__ import annotations
+
+import requests
 
 from pf.classify import TIER_BELIEF, TIER_CANDIDATE, TIER_DEFAULT
 from pf.verify import extract_fragments, resolve_tier, verify_belief, verify_fact
@@ -92,6 +95,20 @@ check("fragments: ninguno supera max", all(len(f) <= 60 for f in frags))
 # 6. evidencia serializable
 d = ev[0].to_dict() if ev else {}
 check("evidence.to_dict", bool(d.get("source") == "wikipedia" and d.get("url")), f"got {d}")
+
+# 7. 429 (rate limit) degrada sin crashear: verificar es OPTATIVO, nunca tumba el lote
+def _exploding_search(_term: str) -> list[dict]:
+    raise requests.HTTPError("429 Client Error: Too Many Requests")
+
+
+verificados_429 = verify_fact(
+    "cualquier fragmento con referentes",
+    search_fn=_exploding_search,
+    summary_fn=fake_summary,
+)
+check("429 degrada sin evidencia", verificados_429 == [], f"got {verificados_429}")
+beliefs_429 = verify_belief("gato negro", search_fn=_exploding_search, summary_fn=fake_summary)
+check("429 degrada creencia", beliefs_429 == [], f"got {beliefs_429}")
 
 if fallos:
     print(f"VERIFY_TESTS: {fallos} fallos")
