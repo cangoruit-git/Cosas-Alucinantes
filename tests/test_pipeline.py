@@ -36,16 +36,28 @@ _TEXTOS = [
 
 _EVIDENCIAS = {
     "mkultra": Evidence(
-        claim="proyecto mkultra", source="wikipedia", title="Proyecto MKUltra",
-        url="https://es.wikipedia.org/wiki/Proyecto_MKUltra", snippet="...", verdict="apoya",
+        claim="proyecto mkultra",
+        source="wikipedia",
+        title="Proyecto MKUltra",
+        url="https://es.wikipedia.org/wiki/Proyecto_MKUltra",
+        snippet="...",
+        verdict="apoya",
     ),
     "gato": Evidence(
-        claim="gato negro", source="wikipedia", title="Gato negro (superstición)",
-        url="https://es.wikipedia.org/wiki/Gato_negro_(superstición)", snippet="...", verdict="contexto",
+        claim="gato negro",
+        source="wikipedia",
+        title="Gato negro (superstición)",
+        url="https://es.wikipedia.org/wiki/Gato_negro_(superstición)",
+        snippet="...",
+        verdict="contexto",
     ),
     "roswell": Evidence(
-        claim="informe fbi", source="wikipedia", title="Caso Roswell",
-        url="https://es.wikipedia.org/wiki/Caso_Roswell", snippet="...", verdict="contexto",
+        claim="informe fbi",
+        source="wikipedia",
+        title="Caso Roswell",
+        url="https://es.wikipedia.org/wiki/Caso_Roswell",
+        snippet="...",
+        verdict="contexto",
     ),
 }
 
@@ -94,9 +106,7 @@ def check(name: str, cond: bool, detail: str = "") -> None:
 
 # 1. distribución de capas y evidencias (sin overlap; max=300 -> cada texto = un chunk)
 store = FakeVStore()
-report = ingest_video(
-    _tr(_TEXTOS), VIDEO, store, verify_fn=fake_verify, overlap_chars=0, max_chars=150
-)
+report = ingest_video(_tr(_TEXTOS), VIDEO, store, verify_fn=fake_verify, overlap_chars=0, max_chars=150)
 tiers = [u[1] for u in store.upserts]
 check("4 chunks", len(store.upserts) == 4, f"got {len(store.upserts)}")
 check("hay real con evidencia", tiers.count("real") == 1, f"tiers: {tiers}")

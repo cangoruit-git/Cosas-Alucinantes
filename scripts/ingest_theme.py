@@ -41,10 +41,7 @@ def main() -> int:
 
     cat = ChannelCatalog()
     try:
-        videos = [
-            v for v in cat.all_videos()
-            if isinstance(v.themes, dict) and v.themes.get(args.theme)
-        ]
+        videos = [v for v in cat.all_videos() if isinstance(v.themes, dict) and v.themes.get(args.theme)]
         if args.ids:
             wanted = set(args.ids)
             videos = [v for v in videos if v.id in wanted]

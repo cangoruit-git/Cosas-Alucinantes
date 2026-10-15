@@ -78,7 +78,9 @@ def _format_hit(h: SearchHit) -> str:
         f"  https://www.youtube.com/watch?v={m.get('video_id', '')}"
         f"{'&t=' + str(int(float(m.get('start', 0)))) if m.get('start') is not None else ''}\n"
         + (_evidence_summary(m) + "\n" if _evidence_summary(m) else "")
-        + f"  URL: {url}" if url and not url.startswith("https://www.youtube.com") else ""
+        + f"  URL: {url}"
+        if url and not url.startswith("https://www.youtube.com")
+        else ""
     ).rstrip()
 
 
