@@ -46,6 +46,16 @@ CHUNK_OVERLAP_CHARS = 120
 # ── Búsqueda ──────────────────────────────────────────────────────────────────
 QUERY_DEFAULT_K = 5
 
+# ── YouTube: reintentos con cookies de navegador (anti-bot) ───────────────────
+# Formato: browser[:profile] separados por coma. Se prueban en orden tras un
+# fallo anónimo. Requiere sesión iniciada de YouTube en ese navegador.
+YT_COOKIES_BROWSERS = os.environ.get("PF_YT_COOKIES", "edge:Default,chrome:Default")
+
+# ── YouTube: clientes de reproducción (anti-bot, sin cookies) ────────────────
+# "web" es el sitio; "android"/"tv" usan los clientes móvil/consola y suelen
+# saltear el muro "Sign in to confirm you're not a bot" (probado: android OK).
+YT_PLAYER_CLIENTS = os.environ.get("PF_YT_PLAYER_CLIENTS", "web,android,tv")
+
 
 def ensure_dirs() -> None:
     """Crea los directorios de datos si no existen."""
