@@ -7,6 +7,7 @@ fragmentos en vez de duplicarlos.
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -22,6 +23,7 @@ from .verify import Evidence, resolve_tier, verify_chunk
 logger = logging.getLogger(__name__)
 
 VerifyFn = Callable[[str], tuple[str, list[Evidence]]]
+VisualFn = Callable[[float, float], list[dict]]
 
 
 @runtime_checkable
@@ -42,6 +44,7 @@ class IngestReport:
     tiers: dict[str, int] = field(default_factory=dict)
     promoted_to_real: int = 0
     evidence_items: int = 0
+    visual_chunks: int = 0
     real_samples: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -51,6 +54,7 @@ class IngestReport:
             "tiers": self.tiers,
             "promoted_to_real": self.promoted_to_real,
             "evidence_items": self.evidence_items,
+            "visual_chunks": self.visual_chunks,
             "real_samples": self.real_samples,
         }
 
@@ -64,6 +68,7 @@ def ingest_video(
     skip_verify: bool = False,
     max_chars: int = config.CHUNK_MAX_CHARS,
     overlap_chars: int = config.CHUNK_OVERLAP_CHARS,
+    visual_fn: VisualFn | None = None,
 ) -> IngestReport:
     """Fragmenta, clasifica, verifica y guarda un video en la base vectorial."""
     report = IngestReport(video_id=transcript.video_id)
@@ -78,6 +83,12 @@ def ingest_video(
             evidences: list[Evidence] = []
         else:
             tier, evidences = verify_fn(chunk.text)
+        if visual_fn is not None:
+            # capa visual: qué MUESTRA el video en la ventana de este fragmento
+            visuales = visual_fn(chunk.start, chunk.end)
+            if visuales:
+                chunk.meta["visual"] = json.dumps(visuales, ensure_ascii=False)
+                report.visual_chunks += 1
         store.upsert_chunk(chunk, tier, evidences or None)
         report.chunks += 1
         report.tiers[tier] = report.tiers.get(tier, 0) + 1

@@ -14,6 +14,7 @@ Cerebro de memoria con la información que dice Parafantástico en sus videos, e
 - S8 — Stack: Python + ChromaDB local, embeddings multilingües locales (sin API keys).
 - S9 — Repositorio: <https://github.com/cangoruit-git/Cosas-Alucinantes> (público, vacío), cuenta GitHub cangoruit-git ya autenticada.
 
+- S10 — La memoria debe capturar lo que la IMAGEN muestra, incluido lo explícito que el audio suaviza u omite: *"aun hay un problema que es las partes sensuradas del texto pero que se pueden ver en el video de forma explicita"* (aclarado por el usuario: el caso es "lo explicito es la imagen, no el texto").
 Criterio de capas (editorial, documentado en docs/criterios-capas.md):
 - `real`: la afirmación o el referente existen y están corroborados por una fuente pública verificable (registros, prensa, informes, Wikipedia/Wikidata con fuente). Se marca SOLO con evidencia adjunta.
 - `sin_confirmar`: afirmación del canal sin corroboración pública (por defecto, la mayoría).
@@ -32,6 +33,7 @@ Criterio de capas (editorial, documentado en docs/criterios-capas.md):
 - T9 — Piloto: correr el pipeline completo sobre el tema dios-cristo, verificar capa `real` con revisión. Specs S5, S6. Ruta: inline + verificación. Commit: `feat(pilot): base del tema dios-cristo`.
 - T10 — Docs: README, criterios de capas, cómo conectar cualquier IA. Spec S4. Ruta: inline. Commit: `docs: README y criterios de capas`.
 - T11 — Push a GitHub (decisión del usuario; cuenta cangoruit-git). Spec S9. Ruta: usuario.
+- T12 — Capa visual: muestreo de fotogramas (PyAV) + etiquetado con CLIP multilingüe local; etiquetas adjuntas al fragmento por minuto y visibles en MCP. Spec S10. Ruta: inline. Commit: `feat(vision): capa visual (lo que muestra el video)`.
 
 ## Log
 
@@ -64,3 +66,4 @@ Criterio de capas (editorial, documentado en docs/criterios-capas.md):
 - verificación endurecida (429, título, entidad): `42c0159`, `5aba8e3`, `ebebf89`
 - fix huérfanos + fix MCP: `5ee4d13`, `1c56a65`
 - log de spec / style: `727228f`, `16d4d80`
+- L10 (usuario, requisito nuevo, verbatim): "aun hay un problema que es las partes sensuradas del texto pero que se pueden ver en el video de forma explicita" → al preguntar cuál de los casos era, eligió "Lo explicito es la imagen" (escenas gráficas que el audio cuenta suave).

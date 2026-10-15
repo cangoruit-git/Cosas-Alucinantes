@@ -66,6 +66,25 @@ def _evidence_summary(meta: dict) -> str:
     return "\n".join(lines) or ""
 
 
+def _visual_summary(meta: dict) -> str:
+    """Capa visual: qué MUESTRA el video en ese momento (lo que el audio no dice)."""
+    raw = meta.get("visual", "") or ""
+    if not raw:
+        return ""
+    try:
+        items = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return ""
+    if not items:
+        return ""
+    partes = []
+    for it in items[:4]:
+        score = it.get("score")
+        etiqueta = it.get("tag", "?")
+        partes.append(f"{etiqueta} ({score:.2f})" if isinstance(score, (int, float)) else str(etiqueta))
+    return "    👁 se ve: " + "; ".join(partes)
+
+
 def _format_hit(h: SearchHit) -> str:
     m = h.metadata
     title = m.get("title", "?")
@@ -82,6 +101,9 @@ def _format_hit(h: SearchHit) -> str:
     ev = _evidence_summary(m)
     if ev:
         lines.append(ev)
+    vis = _visual_summary(m)
+    if vis:
+        lines.append(vis)
     if url and not url.startswith("https://www.youtube.com"):
         lines.append(f"  URL: {url}")
     return "\n".join(lines)

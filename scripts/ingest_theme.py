@@ -25,6 +25,7 @@ from pf.store import VectorStore  # type: ignore[import-not-found]
 from pf.themes import PILOT_THEME, THEMES
 from pf.transcribe import load_transcript
 from pf.verify import verify_chunk
+from pf.vision import load_notes, tags_for_window
 
 logger = logging.getLogger("ingest_theme")
 
@@ -51,6 +52,7 @@ def main() -> int:
 
     store = VectorStore()
     entities = list(THEMES.get(args.theme, {}).get("keywords", []))
+    visuals_dir = config.DATA / "visual"
 
     def verify_with_entities(text: str):
         """Verificación con gate de ENTIDAD del tema (su sujeto específico)."""
@@ -63,13 +65,26 @@ def main() -> int:
         if tr is None:
             logger.info("[%s] sin transcripción todavía — se saltea", v.id)
             continue
-        report = ingest_video(tr, v, store, skip_verify=args.skip_verify, verify_fn=verify_with_entities)
+        notas = load_notes(visuals_dir / f"{v.id}.json")
+
+        def visual_fn(start: float, end: float, _n: list = notas) -> list[dict]:
+            return tags_for_window(_n, start, end) if _n else []
+
+        report = ingest_video(
+            tr,
+            v,
+            store,
+            skip_verify=args.skip_verify,
+            verify_fn=verify_with_entities,
+            visual_fn=visual_fn if notas else None,
+        )
         ingestidos += 1
         logger.info(
-            "[%s] %d fragmentos: %s",
+            "[%s] %d fragmentos: %s | %d con capa visual",
             v.id,
             report.chunks,
             ", ".join(f"{k}={n}" for k, n in sorted(report.tiers.items())),
+            report.visual_chunks,
         )
         for sample in report.real_samples:
             reviews.append(
