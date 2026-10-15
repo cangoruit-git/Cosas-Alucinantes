@@ -204,8 +204,24 @@ class Transcriber:
             beam_size=config.WHISPER_BEAM_SIZE,
             vad_filter=True,
         )
-        raw = [(seg.start, seg.end, seg.text.strip()) for seg in segments if seg.text and seg.text.strip()]
-        dur = info.duration if info is not None else audio_path.stat().st_size
+        raw: list[tuple[float, float, str]] = []
+        dur_est = info.duration if info is not None else None
+        total = _fmt_secs(dur_est) if dur_est else "?"
+        next_log = 120.0  # aviso cada 2 min de audio: un video largo no parece colgado
+        for seg in segments:
+            if not seg.text or not seg.text.strip():
+                continue
+            raw.append((seg.start, seg.end, seg.text.strip()))
+            if seg.end >= next_log:
+                logger.info(
+                    "  ...%s: %s/%s de audio (%d segmentos)",
+                    video.id,
+                    _fmt_secs(seg.end),
+                    total,
+                    len(raw),
+                )
+                next_log += 120.0
+        dur = dur_est if dur_est is not None else audio_path.stat().st_size
         tr = Transcript(video.id, dur, [Segment(s, e, t) for s, e, t in raw], config.WHISPER_MODEL)
         elapsed = time.monotonic() - t0
         logger.info(
