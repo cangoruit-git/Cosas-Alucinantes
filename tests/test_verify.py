@@ -168,8 +168,7 @@ def _summary_sabana(title: str) -> dict | None:
     return {
         "title": title,
         "extract": (
-            "La Sábana Santa de Turín es una sábana de lino que muestra la imagen "
-            "de un hombre crucificado"
+            "La Sábana Santa de Turín es una sábana de lino que muestra la imagen de un hombre crucificado"
         ),
         "url": f"https://es.wikipedia.org/wiki/{title}",
     }
@@ -194,18 +193,13 @@ def _search_mente(_term: str) -> list[dict]:
 def _summary_mente(title: str) -> dict | None:
     return {
         "title": title,
-        "extract": (
-            "La mente humana y las redes neuronales mapearon el cerebro complejo "
-            "según la ciencia"
-        ),
+        "extract": ("La mente humana y las redes neuronales mapearon el cerebro complejo según la ciencia"),
         "url": f"https://es.wikipedia.org/wiki/{title}",
     }
 
 
 frag_mente = "la mente humana y las redes neuronales mapearon el cerebro complejo según la ciencia"
-ev_mente = verify_fact(
-    frag_mente, search_fn=_search_mente, summary_fn=_summary_mente, entities=_ENTIDADES
-)
+ev_mente = verify_fact(frag_mente, search_fn=_search_mente, summary_fn=_summary_mente, entities=_ENTIDADES)
 check(
     "entidad: sin sujeto del tema no apoya",
     not any(e.apoya() for e in ev_mente),

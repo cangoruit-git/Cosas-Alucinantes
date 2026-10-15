@@ -63,9 +63,7 @@ def main() -> int:
         if tr is None:
             logger.info("[%s] sin transcripción todavía — se saltea", v.id)
             continue
-        report = ingest_video(
-            tr, v, store, skip_verify=args.skip_verify, verify_fn=verify_with_entities
-        )
+        report = ingest_video(tr, v, store, skip_verify=args.skip_verify, verify_fn=verify_with_entities)
         ingestidos += 1
         logger.info(
             "[%s] %d fragmentos: %s",

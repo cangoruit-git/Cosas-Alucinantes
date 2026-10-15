@@ -37,7 +37,7 @@ class FakeVStore:
                 metadata={
                     "video_id": "abc123",
                     "title": "Video de prueba",
-                    "url": "https://example.com/x",
+                    "url": "https://www.youtube.com/watch?v=abc123",
                     "start": 65.0,
                     "evidence": _EVID,
                 },
@@ -80,6 +80,8 @@ mcp_mod._store = FakeVStore()  # sin cargar el modelo de embeddings
 out = mcp_mod.recall("qué dijo sobre la sábana santa?")
 check("recall: header memoria", "Memoria de Parafantástico" in out, out[:80])
 check("recall: capa visible", "[real]" in out, out[:120])
+check("recall: CUERPO del fragmento visible", "fragmento de prueba" in out, out[:200])
+check("recall: link con minuto", "watch?v=abc123&t=65" in out, out[:200])
 check("recall: evidencia visible", "Sábana Santa" in out and "apoya" in out, out[:200])
 
 # 2. tier inválido devuelve error claro

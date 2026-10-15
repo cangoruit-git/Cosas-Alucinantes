@@ -68,20 +68,23 @@ def _evidence_summary(meta: dict) -> str:
 
 def _format_hit(h: SearchHit) -> str:
     m = h.metadata
-    t = m.get("title", "?")
+    title = m.get("title", "?")
     url = m.get("url", "")
-    ts = _ts(h.metadata.get("start", 0))
+    video_id = m.get("video_id", "")
+    start = m.get("start")
     text = " ".join(h.document.split())[:260]
-    return (
-        f"[{h.tier}] {t} (en {ts}) score={h.score}\n"
-        f"  {text}\n"
-        f"  https://www.youtube.com/watch?v={m.get('video_id', '')}"
-        f"{'&t=' + str(int(float(m.get('start', 0)))) if m.get('start') is not None else ''}\n"
-        + (_evidence_summary(m) + "\n" if _evidence_summary(m) else "")
-        + f"  URL: {url}"
-        if url and not url.startswith("https://www.youtube.com")
-        else ""
-    ).rstrip()
+    lines = [f"[{h.tier}] {title} (en {_ts(start or 0)}) score={h.score}", f"  {text}"]
+    if video_id:
+        link = f"https://www.youtube.com/watch?v={video_id}"
+        if start is not None:
+            link += f"&t={int(float(start))}"
+        lines.append(f"  {link}")
+    ev = _evidence_summary(m)
+    if ev:
+        lines.append(ev)
+    if url and not url.startswith("https://www.youtube.com"):
+        lines.append(f"  URL: {url}")
+    return "\n".join(lines)
 
 
 # ── herramientas MCP ──────────────────────────────────────────────────────────
