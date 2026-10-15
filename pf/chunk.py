@@ -65,9 +65,7 @@ def chunk_transcript(
       pack (no sobre la cola heredada): evita bucles infinitos.
     """
     segs: list[_Seg] = [
-        (s.start, s.end, " ".join(s.text.split()))
-        for s in transcript.segments
-        if s.text and s.text.strip()
+        (s.start, s.end, " ".join(s.text.split())) for s in transcript.segments if s.text and s.text.strip()
     ]
     if not segs:
         return []
