@@ -172,3 +172,24 @@ class VectorStore:
             r = col.get(where={"video_id": video_id})
             total += len(r.get("ids", []) or [])
         return total
+
+    def video_chunks(self, video_id: str, tier: str | None = None) -> list[SearchHit]:
+        """Todos los fragmentos de un video (ordenados por índice), con su capa."""
+        tiers = [tier] if tier else list(config.TIERS)
+        out: list[SearchHit] = []
+        for t in tiers:
+            r = self.collections[t].get(where={"video_id": video_id})
+            ids = r.get("ids") or []
+            docs = r.get("documents") or []
+            metas = r.get("metadatas") or []
+            for i, _ in enumerate(ids):
+                out.append(
+                    SearchHit(
+                        tier=t,
+                        distance=0.0,
+                        document=docs[i] if docs else "",
+                        metadata=dict(metas[i]) if metas else {},
+                    )
+                )
+        out.sort(key=lambda h: int(h.metadata.get("chunk_index", 0) or 0))
+        return out
