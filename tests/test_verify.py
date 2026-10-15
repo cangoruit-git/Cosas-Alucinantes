@@ -23,8 +23,7 @@ _SNIPPET_MKULTRA = (
 _SUMMARY_MKULTRA = _SNIPPET_MKULTRA + " Investigaciones de 1977 desclasificadas."
 
 _SNIPPET_GRISES = (
-    "En la ufología, los grises son una raza alienígena descrita con "
-    "piel gris y grandes ojos negros."
+    "En la ufología, los grises son una raza alienígena descrita con piel gris y grandes ojos negros."
 )
 _SNIPPET_GATO = "El gato negro es considerado de mala suerte en varias culturas."
 _SUMMARY_GATO = "El gato negro es considerado de mala suerte en varias culturas europeas."
@@ -96,6 +95,7 @@ check("fragments: ninguno supera max", all(len(f) <= 60 for f in frags))
 d = ev[0].to_dict() if ev else {}
 check("evidence.to_dict", bool(d.get("source") == "wikipedia" and d.get("url")), f"got {d}")
 
+
 # 7. 429 (rate limit) degrada sin crashear: verificar es OPTATIVO, nunca tumba el lote
 def _exploding_search(_term: str) -> list[dict]:
     raise requests.HTTPError("429 Client Error: Too Many Requests")
@@ -109,6 +109,46 @@ verificados_429 = verify_fact(
 check("429 degrada sin evidencia", verificados_429 == [], f"got {verificados_429}")
 beliefs_429 = verify_belief("gato negro", search_fn=_exploding_search, summary_fn=fake_summary)
 check("429 degrada creencia", beliefs_429 == [], f"got {beliefs_429}")
+
+# 8. gate de título: un artículo con vocabulario común pero tema NO relacionado
+# (el caso real de la auditoría: "Doblado de chapa" para un fragmento de chatbots)
+def _search_chapa(_term: str) -> list[dict]:
+    return [
+        {
+            "title": "Doblado de chapa",
+            "snippet": (
+                "El proceso de doblado de chapa aplica esfuerzos de compresión "
+                "sobre materiales metálicos"
+            ),
+        }
+    ]
+
+
+def _summary_chapa(title: str) -> dict | None:
+    return {
+        "title": title,
+        "extract": (
+            "El doblado de chapa es un proceso de conformado de materiales "
+            "metálicos mediante compresión."
+        ),
+        "url": f"https://es.wikipedia.org/wiki/{title}",
+    }
+
+
+frag_chatbots = (
+    "primero cargamos en cada chatbot las charlas previas para que tuvieran el contexto completo"
+)
+ev_chapa = verify_fact(frag_chatbots, search_fn=_search_chapa, summary_fn=_summary_chapa)
+check(
+    "gate de título: sin apoya",
+    not any(e.apoya() for e in ev_chapa),
+    f"got {[e.verdict for e in ev_chapa]}",
+)
+check(
+    "gate de título: no promueve",
+    resolve_tier(TIER_CANDIDATE, ev_chapa) == TIER_DEFAULT,
+    f"got {ev_chapa}",
+)
 
 if fallos:
     print(f"VERIFY_TESTS: {fallos} fallos")

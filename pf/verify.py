@@ -35,10 +35,90 @@ _VERDICT_CONTEXTO = "contexto"
 _VERDICT_CONTRA = "contradice"
 
 _STOP = {
-    "para", "por", "con", "sobre", "entre", "desde", "hacia", "contra",
-    "según", "segun", "como", "más", "mas", "menos", "muy", "cada", "otra",
-    "otro", "otros", "entonces", "también", "tambien", "pero", "porque",
+    "para",
+    "por",
+    "con",
+    "sobre",
+    "entre",
+    "desde",
+    "hacia",
+    "contra",
+    "según",
+    "segun",
+    "como",
+    "más",
+    "mas",
+    "menos",
+    "muy",
+    "cada",
+    "otra",
+    "otro",
+    "otros",
+    "entonces",
+    "también",
+    "tambien",
+    "pero",
+    "porque",
+    "todo",
+    "todos",
+    "toda",
+    "todas",
+    "esta",
+    "este",
+    "esto",
+    "estas",
+    "estos",
+    "ser",
+    "son",
+    "era",
+    "fue",
+    "han",
+    "haber",
+    "hacer",
+    "hacen",
+    "dice",
+    "dicen",
+    "decir",
+    "cuando",
+    "donde",
+    "luego",
+    "mismo",
+    "misma",
+    "nuestro",
+    "nuestra",
+    "tema",
+    "temas",
+    "caso",
+    "casos",
+    "forma",
+    "parte",
+    "nivel",
+    "vez",
+    "veces",
+    "puede",
+    "además",
+    "ademas",
+    "manera",
+    "año",
+    "años",
+    "cosa",
+    "cosas",
+    "mucha",
+    "mucho",
+    "muchos",
+    "ahora",
+    "siempre",
+    "nunca",
+    "cual",
+    "cuales",
+    "modo",
+    "través",
+    "traves",
 }
+
+# Umbrales del veredicto (solapamiento de palabras DISTINTIVAS)
+_APOYA_OVERLAP = 0.55
+_CONTEXTO_OVERLAP = 0.25
 
 
 @dataclass
@@ -128,10 +208,9 @@ def _wikipedia_summary(title: str) -> dict | None:
             if r.status_code != 200:
                 return None
             d = r.json()
-            url = (
-                (d.get("content_urls") or {}).get("desktop", {}).get("page", "")
-                or f"https://es.wikipedia.org/wiki/{quote(title)}"
-            )
+            url = (d.get("content_urls") or {}).get("desktop", {}).get(
+                "page", ""
+            ) or f"https://es.wikipedia.org/wiki/{quote(title)}"
             return {"title": d.get("title", title), "extract": d.get("extract", ""), "url": url}
         except Exception as exc:  # noqa: BLE001 - degradar, no romper el lote
             logger.warning("wikipedia summary falló (%s): %s", title, exc)
@@ -139,9 +218,10 @@ def _wikipedia_summary(title: str) -> dict | None:
 
 
 def _words(text: str) -> set[str]:
+    """Palabras DISTINTIVAS (>= 6 letras) sin términos de alta frecuencia."""
     return {
         w
-        for w in re.findall(r"[a-záéíóúüñ]{4,}", (text or "").lower())
+        for w in re.findall(r"[a-záéíóúüñ]{6,}", (text or "").lower())
         if w not in _STOP
     }
 
@@ -153,6 +233,17 @@ def _overlap(fragment: str, other: str) -> float:
         return 0.0
     b = _words(other)
     return len(a & b) / len(a)
+
+
+def _title_gate(fragment: str, title: str) -> bool:
+    """El título del artículo comparte con el fragmento al menos un token distintivo.
+
+    Mata falsos positivos tipo "Doblado de chapa" para un fragmento sobre chatbots:
+    aunque compartan vocabulario común, el ARTÍCULO no trata de lo mismo.
+    """
+    a = {w for w in re.findall(r"[a-záéíóúüñ]{4,}", (fragment or "").lower()) if w not in _STOP}
+    b = {w for w in re.findall(r"[a-záéíóúüñ]{4,}", (title or "").lower()) if w not in _STOP}
+    return bool(a & b)
 
 
 def extract_fragments(text: str, max_len: int = 160, limit: int = 8) -> list[str]:
@@ -181,16 +272,15 @@ def verify_fact(
     fragment: str,
     *,
     max_evidence: int = 3,
-    threshold: float = 0.20,
     search_fn: SearchFn | None = None,
     summary_fn: SummaryFn | None = None,
 ) -> list[Evidence]:
     """Corrobora un fragmento contra fuentes públicas; devuelve evidencia.
 
-    Veredictos por solapamiento lexicográfico fragmento <-> fuente:
-    - >= 0.45 -> "apoya" (la fuente sustenta el contenido)
-    - >= 0.20 -> "contexto" (menciona los mismos referentes, sin juzgar)
-    - <  0.20 -> descartado (ruido)
+    Veredictos por solapamiento de palabras DISTINTIVAS fragmento <-> fuente:
+    - >= 0.55 Y el título del artículo comparte un token distintivo -> "apoya"
+    - >= 0.25 -> "contexto" (menciona referentes, sin sustentar)
+    - <  0.25 -> descartado (ruido)
     """
     search_fn = search_fn or _wikipedia_search
     summary_fn = summary_fn or _wikipedia_summary
@@ -212,9 +302,12 @@ def verify_fact(
         abstract = (summ or {}).get("extract", "") or ""
         url = (summ or {}).get("url", "") or f"https://es.wikipedia.org/wiki/{quote(title)}"
         score = max(_overlap(fragment, snippet), _overlap(fragment, abstract))
-        if score < threshold:
+        if score < _CONTEXTO_OVERLAP:
             continue
-        verdict = _VERDICT_APOYA if score >= 0.45 else _VERDICT_CONTEXTO
+        if score >= _APOYA_OVERLAP and _title_gate(fragment, title):
+            verdict = _VERDICT_APOYA
+        else:
+            verdict = _VERDICT_CONTEXTO
         out.append(
             Evidence(
                 claim=fragment,
