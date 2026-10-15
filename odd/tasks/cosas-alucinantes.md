@@ -42,6 +42,8 @@ Criterio de capas (editorial, documentado en docs/criterios-capas.md):
 - L5 (usuario, tema del piloto, verbatim): "dios y cristo"
 - L6 (usuario, estrategia de transcripción): "De a 5 primero" (validar el pipeline completo en 5 videos antes del resto).
 - L7 (decisiones técnicas del entorno, T3): las cookies de navegador no se pueden desencriptar (App-Bound, bug yt-dlp #10927) y el cliente `android` de YouTube saltea el muro anti-bot; PyAV 19 rompió `metadata_errors` y `pf/transcribe.py` aplica un parche compat en runtime.
+- L8 (auditoría del piloto): la 1ª pasada de la capa `real` promovía ruido ("Doblado de chapa", "Mente universal", "Tales of Vesperia"). Correcciones con tests: gate de título (`5aba8e3`), gate de ENTIDAD del tema (`ebebf89`); resultado honesto `real: 0` (el canal afirma mayormente cosas no verificables). Bugs detectados y corregidos: fragmentos huérfanos al re-ingerir (`5ee4d13`) y `_format_hit` devolviendo vacío con URLs de YouTube (`1c56a65`).
+- L9 (verificación independiente, gentle-ai-verify, read-only): S1-S9 **CUMPLE**; avisos corregidos en el commit `7d515ed` (criterios-capas alineado al código real 0.55/0.25 + gates, código muerto eliminado de pipeline, sondas de regresión agregadas a los tests).
 
 ## Commits (evidencia)
 
@@ -55,3 +57,10 @@ Criterio de capas (editorial, documentado en docs/criterios-capas.md):
 - T8 servidor MCP (MCPServer 2.x): `2da19c4`
 - T9 pipeline + script piloto: `7216823`
 - T10 README: `e1ef109`
+- T3 transcripción validada: `ede6d90`
+- config YT (clientes/cookies): `4fa3584`
+- store video_chunks: `755128b`
+- query CLI: `269c85e`
+- verificación endurecida (429, título, entidad): `42c0159`, `5aba8e3`, `ebebf89`
+- fix huérfanos + fix MCP: `5ee4d13`, `1c56a65`
+- log de spec / style: `727228f`, `16d4d80`
