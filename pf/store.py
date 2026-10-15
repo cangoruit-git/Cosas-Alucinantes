@@ -20,7 +20,7 @@ from chromadb.utils import embedding_functions  # type: ignore
 
 from . import config
 from .chunk import Chunk
-from .verify import Evidence
+from .verify import Evidence  # type: ignore[import-not-found]
 
 logger = logging.getLogger(__name__)
 
@@ -193,3 +193,18 @@ class VectorStore:
                 )
         out.sort(key=lambda h: int(h.metadata.get("chunk_index", 0) or 0))
         return out
+
+    def delete_video(self, video_id: str) -> int:
+        """Borra TODOS los fragmentos de un video, en todas las capas.
+
+        Re-ingerir un video lo REEMPLAZA: sin esto, un fragmento que cambia de
+        capa queda huérfano en la colección anterior (id distinto por capa).
+        """
+        removed = 0
+        for col in self.collections.values():
+            r = col.get(where={"video_id": video_id})
+            ids = r.get("ids") or []
+            if ids:
+                col.delete(ids=list(ids))
+                removed += len(ids)
+        return removed

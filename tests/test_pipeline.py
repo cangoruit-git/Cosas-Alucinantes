@@ -67,10 +67,15 @@ class FakeVStore:
 
     def __init__(self):
         self.upserts: list[tuple[str, str, list[Evidence] | None]] = []
+        self.deleted: list[str] = []
 
     def upsert_chunk(self, chunk, tier, evidences=None) -> str:
         self.upserts.append((chunk.video_id, tier, evidences))
         return f"{tier}:{chunk.video_id}:{chunk.index}"
+
+    def delete_video(self, video_id: str) -> int:
+        self.deleted.append(video_id)
+        return 0
 
 
 def _tr(texts: list[str]) -> Transcript:
@@ -128,7 +133,7 @@ tr2 = _tr(["el informe del FBI de 1947 documenta el caso con registros del museo
 ingest_video(tr2, VIDEO, store2, verify_fn=fake_verify, skip_verify=True)
 check("skip_verify nunca real", store2.upserts[0][1] == "sin_confirmar", f"got {store2.upserts[0][1]}")
 
-# 3. idempotencia: re-ingerir el mismo video genera la misma cantidad por vuelta
+# 3. idempotencia: re-ingerir REEMPLAZA (delete por vuelta) y regenera los chunks
 store3 = FakeVStore()
 ingest_video(_tr(_TEXTOS), VIDEO, store3, verify_fn=fake_verify, overlap_chars=0, max_chars=150)
 ingest_video(_tr(_TEXTOS), VIDEO, store3, verify_fn=fake_verify, overlap_chars=0, max_chars=150)
@@ -136,6 +141,11 @@ check(
     "re-ingesta genera la misma cantidad",
     len(store3.upserts) == 8,
     f"got {len(store3.upserts)}",
+)
+check(
+    "re-ingesta reemplaza el video (delete por vuelta)",
+    store3.deleted == ["t1", "t1"],
+    f"got {store3.deleted}",
 )
 
 # 4. transcript vacío -> reporte sin fragmentos

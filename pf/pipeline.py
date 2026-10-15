@@ -30,6 +30,8 @@ class StoreLike(Protocol):
 
     def upsert_chunk(self, chunk: Chunk, tier: str, evidences: list[Evidence] | None = None) -> str: ...
 
+    def delete_video(self, video_id: str) -> int: ...
+
 
 @dataclass
 class IngestReport:
@@ -65,6 +67,9 @@ def ingest_video(
 ) -> IngestReport:
     """Fragmenta, clasifica, verifica y guarda un video en la base vectorial."""
     report = IngestReport(video_id=transcript.video_id)
+    # re-ingerir = REEMPLAZAR: sin esto, un fragmento que cambia de capa queda
+    # huérfano en la colección anterior (el id incluye la capa)
+    store.delete_video(transcript.video_id)
     for chunk in chunk_transcript(transcript, video, max_chars=max_chars, overlap_chars=overlap_chars):
         if skip_verify:
             provision = classify_text(chunk.text).provision
