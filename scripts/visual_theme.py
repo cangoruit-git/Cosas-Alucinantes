@@ -105,9 +105,7 @@ def main() -> int:
         if video_path is None:
             fallos += 1
             continue
-        notas = visual_notes(
-            video_path, tagger, every_sec=args.every_sec, max_frames=args.max_frames
-        )
+        notas = visual_notes(video_path, tagger, every_sec=args.every_sec, max_frames=args.max_frames)
         save_notes(notas, NOTES_DIR / f"{v.id}.json")
         hechos += 1
         top = [n for nota in notas for n, _ in nota.tags][:6]
