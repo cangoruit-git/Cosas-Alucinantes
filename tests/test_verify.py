@@ -110,6 +110,7 @@ check("429 degrada sin evidencia", verificados_429 == [], f"got {verificados_429
 beliefs_429 = verify_belief("gato negro", search_fn=_exploding_search, summary_fn=fake_summary)
 check("429 degrada creencia", beliefs_429 == [], f"got {beliefs_429}")
 
+
 # 8. gate de título: un artículo con vocabulario común pero tema NO relacionado
 # (el caso real de la auditoría: "Doblado de chapa" para un fragmento de chatbots)
 def _search_chapa(_term: str) -> list[dict]:
@@ -117,8 +118,7 @@ def _search_chapa(_term: str) -> list[dict]:
         {
             "title": "Doblado de chapa",
             "snippet": (
-                "El proceso de doblado de chapa aplica esfuerzos de compresión "
-                "sobre materiales metálicos"
+                "El proceso de doblado de chapa aplica esfuerzos de compresión sobre materiales metálicos"
             ),
         }
     ]
@@ -128,16 +128,13 @@ def _summary_chapa(title: str) -> dict | None:
     return {
         "title": title,
         "extract": (
-            "El doblado de chapa es un proceso de conformado de materiales "
-            "metálicos mediante compresión."
+            "El doblado de chapa es un proceso de conformado de materiales metálicos mediante compresión."
         ),
         "url": f"https://es.wikipedia.org/wiki/{title}",
     }
 
 
-frag_chatbots = (
-    "primero cargamos en cada chatbot las charlas previas para que tuvieran el contexto completo"
-)
+frag_chatbots = "primero cargamos en cada chatbot las charlas previas para que tuvieran el contexto completo"
 ev_chapa = verify_fact(frag_chatbots, search_fn=_search_chapa, summary_fn=_summary_chapa)
 check(
     "gate de título: sin apoya",
@@ -148,6 +145,76 @@ check(
     "gate de título: no promueve",
     resolve_tier(TIER_CANDIDATE, ev_chapa) == TIER_DEFAULT,
     f"got {ev_chapa}",
+)
+
+# 9. gate de ENTIDAD del tema: el artículo debe tratar el SUJETO específico
+# (casos reales de la auditoría: "Mente universal" / "Ultra-Humanidad" no corroboran)
+_ENTIDADES = ["sábana santa", "vaticano", "jesús", "biblia", "turín"]
+
+
+def _search_sabana(_term: str) -> list[dict]:
+    return [
+        {
+            "title": "Sábana Santa",
+            "snippet": (
+                "La Sábana Santa de Turín muestra la imagen de un hombre crucificado "
+                "según los análisis realizados"
+            ),
+        }
+    ]
+
+
+def _summary_sabana(title: str) -> dict | None:
+    return {
+        "title": title,
+        "extract": (
+            "La Sábana Santa de Turín es una sábana de lino que muestra la imagen "
+            "de un hombre crucificado"
+        ),
+        "url": f"https://es.wikipedia.org/wiki/{title}",
+    }
+
+
+frag_sabana = "la sábana santa de turín muestra la imagen de un hombre crucificado según los análisis"
+ev_sabana = verify_fact(
+    frag_sabana, search_fn=_search_sabana, summary_fn=_summary_sabana, entities=_ENTIDADES
+)
+check(
+    "entidad: apoya con el sujeto del tema",
+    any(e.apoya() for e in ev_sabana),
+    f"got {[e.verdict for e in ev_sabana]}",
+)
+check("entidad: promueve a real", resolve_tier(TIER_CANDIDATE, ev_sabana) == "real")
+
+
+def _search_mente(_term: str) -> list[dict]:
+    return [{"title": "Mente universal", "snippet": "La mente universal es un concepto filosófico"}]
+
+
+def _summary_mente(title: str) -> dict | None:
+    return {
+        "title": title,
+        "extract": (
+            "La mente humana y las redes neuronales mapearon el cerebro complejo "
+            "según la ciencia"
+        ),
+        "url": f"https://es.wikipedia.org/wiki/{title}",
+    }
+
+
+frag_mente = "la mente humana y las redes neuronales mapearon el cerebro complejo según la ciencia"
+ev_mente = verify_fact(
+    frag_mente, search_fn=_search_mente, summary_fn=_summary_mente, entities=_ENTIDADES
+)
+check(
+    "entidad: sin sujeto del tema no apoya",
+    not any(e.apoya() for e in ev_mente),
+    f"got {[e.verdict for e in ev_mente]}",
+)
+check(
+    "entidad: no promueve a real",
+    resolve_tier(TIER_CANDIDATE, ev_mente) == TIER_DEFAULT,
+    f"got {ev_mente}",
 )
 
 if fallos:

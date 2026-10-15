@@ -16,13 +16,14 @@ from __future__ import annotations
 import logging
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from urllib.parse import quote
 
 import requests
 
 from .classify import TIER_BELIEF, TIER_CANDIDATE, TIER_DEFAULT, classify_text
+from .themes import _hit, _norm
 
 logger = logging.getLogger(__name__)
 
@@ -219,11 +220,7 @@ def _wikipedia_summary(title: str) -> dict | None:
 
 def _words(text: str) -> set[str]:
     """Palabras DISTINTIVAS (>= 6 letras) sin términos de alta frecuencia."""
-    return {
-        w
-        for w in re.findall(r"[a-záéíóúüñ]{6,}", (text or "").lower())
-        if w not in _STOP
-    }
+    return {w for w in re.findall(r"[a-záéíóúüñ]{6,}", (text or "").lower()) if w not in _STOP}
 
 
 def _overlap(fragment: str, other: str) -> float:
@@ -244,6 +241,22 @@ def _title_gate(fragment: str, title: str) -> bool:
     a = {w for w in re.findall(r"[a-záéíóúüñ]{4,}", (fragment or "").lower()) if w not in _STOP}
     b = {w for w in re.findall(r"[a-záéíóúüñ]{4,}", (title or "").lower()) if w not in _STOP}
     return bool(a & b)
+
+
+def _entity_gate(fragment: str, title: str, entities: Collection[str]) -> bool:
+    """Una ENTIDAD DEL TEMA aparece en el fragmento Y en el título del artículo.
+
+    Es el gate fuerte: para hablar de corroboración, la fuente tiene que tratar
+    del sujeto específico (Sábana Santa, Vaticano, Jesús...), no de un concepto
+    genérico que comparte vocabulario ("Mente universal", "Ultra-Humanidad").
+    """
+    tf = _norm(fragment)
+    tt = _norm(title)
+    for e in entities:
+        ne = _norm(e)
+        if ne and _hit(tf, ne) and _hit(tt, ne):
+            return True
+    return False
 
 
 def extract_fragments(text: str, max_len: int = 160, limit: int = 8) -> list[str]:
@@ -274,11 +287,13 @@ def verify_fact(
     max_evidence: int = 3,
     search_fn: SearchFn | None = None,
     summary_fn: SummaryFn | None = None,
+    entities: Collection[str] | None = None,
 ) -> list[Evidence]:
     """Corrobora un fragmento contra fuentes públicas; devuelve evidencia.
 
     Veredictos por solapamiento de palabras DISTINTIVAS fragmento <-> fuente:
-    - >= 0.55 Y el título del artículo comparte un token distintivo -> "apoya"
+    - >= 0.55 Y gate de título (y, si se pasan `entities`, gate de entidad del
+      tema: la entidad debe estar en el fragmento Y en el título) -> "apoya"
     - >= 0.25 -> "contexto" (menciona referentes, sin sustentar)
     - <  0.25 -> descartado (ruido)
     """
@@ -305,7 +320,10 @@ def verify_fact(
         if score < _CONTEXTO_OVERLAP:
             continue
         if score >= _APOYA_OVERLAP and _title_gate(fragment, title):
-            verdict = _VERDICT_APOYA
+            if entities is None or _entity_gate(fragment, title, entities):
+                verdict = _VERDICT_APOYA
+            else:
+                verdict = _VERDICT_CONTEXTO
         else:
             verdict = _VERDICT_CONTEXTO
         out.append(
@@ -383,13 +401,15 @@ def resolve_tier(provision: str, evidences: list[Evidence]) -> str:
     return provision
 
 
-def verify_chunk(text: str) -> tuple[str, list[Evidence]]:
+def verify_chunk(
+    text: str, entities: Collection[str] | None = None
+) -> tuple[str, list[Evidence]]:
     """Clasifica y verifica un fragmento completo; devuelve (tier, evidencia)."""
     cls = classify_text(text)
     evidences: list[Evidence] = []
     if cls.provision == TIER_CANDIDATE:
         for frag in extract_fragments(text)[:3]:
-            evidences.extend(verify_fact(frag))
+            evidences.extend(verify_fact(frag, entities=entities))
             if any(e.apoya() for e in evidences):
                 break  # ya hay apoyo; no gastar más consultas
     elif cls.provision == TIER_BELIEF:

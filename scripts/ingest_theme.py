@@ -22,8 +22,9 @@ from pf import config
 from pf.catalog import ChannelCatalog
 from pf.pipeline import ingest_video  # type: ignore[import-not-found]
 from pf.store import VectorStore  # type: ignore[import-not-found]
-from pf.themes import PILOT_THEME
+from pf.themes import PILOT_THEME, THEMES
 from pf.transcribe import load_transcript
+from pf.verify import verify_chunk
 
 logger = logging.getLogger("ingest_theme")
 
@@ -49,6 +50,12 @@ def main() -> int:
         cat.close()
 
     store = VectorStore()
+    entities = list(THEMES.get(args.theme, {}).get("keywords", []))
+
+    def verify_with_entities(text: str):
+        """Verificación con gate de ENTIDAD del tema (su sujeto específico)."""
+        return verify_chunk(text, entities=entities)
+
     reviews: list[dict] = []
     ingestidos = 0
     for v in videos:
@@ -56,7 +63,9 @@ def main() -> int:
         if tr is None:
             logger.info("[%s] sin transcripción todavía — se saltea", v.id)
             continue
-        report = ingest_video(tr, v, store, skip_verify=args.skip_verify)
+        report = ingest_video(
+            tr, v, store, skip_verify=args.skip_verify, verify_fn=verify_with_entities
+        )
         ingestidos += 1
         logger.info(
             "[%s] %d fragmentos: %s",

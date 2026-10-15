@@ -21,7 +21,17 @@ def main() -> int:
     ap.add_argument("--k", type=int, default=5, help="cantidad de fragmentos (1-15)")
     args = ap.parse_args()
 
-    logging.basicConfig(level=logging.WARNING)
+    # silenciar logs de terceros (huggingface/httpx) para que la respuesta se lea
+    logging.basicConfig(level=logging.ERROR)
+    for noisy in (
+        "httpx",
+        "httpcore",
+        "urllib3",
+        "huggingface_hub",
+        "sentence_transformers",
+        "chromadb",
+    ):
+        logging.getLogger(noisy).setLevel(logging.ERROR)
     print(recall(args.query, tier=args.tier, k=args.k))
     return 0
 
