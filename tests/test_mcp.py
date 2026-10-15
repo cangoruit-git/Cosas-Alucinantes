@@ -83,6 +83,8 @@ check("recall: capa visible", "[real]" in out, out[:120])
 check("recall: CUERPO del fragmento visible", "fragmento de prueba" in out, out[:200])
 check("recall: link con minuto", "watch?v=abc123&t=65" in out, out[:200])
 check("recall: evidencia visible", "Sábana Santa" in out and "apoya" in out, out[:200])
+check("recall: no vacío con URL de YouTube", len(out) > 100, f"len={len(out)}")
+check("recall: sin línea URL extra para fuentes YouTube", "URL: https" not in out)
 
 # 2. tier inválido devuelve error claro
 check("recall tier inválido", "tier inválido" in mcp_mod.recall("x", tier="falso"))

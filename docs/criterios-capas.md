@@ -25,11 +25,21 @@ partida**, y la revisión editorial del humano es la autoridad final.
      `sin_confirmar`.
 2. **Verificación** (`pf/verify.py`): para candidatos, busca fuentes públicas
    (Wikipedia ES por ahora; Wikidata/prensa próximos). Veredictos por
-   solapamiento con la fuente:
-   - `apoya` (>= 0.45): la fuente sustenta el contenido → promueve a `real`.
-   - `contexto` (0.20–0.45): la fuente menciona los referentes sin sustentar
+   solapamiento de **palabras distintivas** (≥6 letras, sin stopwords):
+   - `apoya` (≥0.55 **más gates**): promueve a `real` SOLO si además el título
+     del artículo comparte un token distintivo con el fragmento y —cuando la
+     ingesta pasa entidades del tema— una ENTIDAD del tema (Jesús, Sábana
+     Santa, Vaticano, Biblia...) aparece en el fragmento **y** en el título.
+   - `contexto` (0.25–0.55): la fuente menciona los referentes sin sustentar
      la afirmación → se queda en `sin_confirmar` (la evidencia viaja con él).
-   - sin solapamiento → se descarta el ruido.
+   - por debajo de 0.25 → se descarta el ruido.
+   - Un 429 o un fallo de red degrada a "sin evidencia": la verificación es
+     optativa y nunca rompe la ingesta.
+
+   Nota honesta: la verificación léxica es un filtro DÉBIL — sirve para
+   adjuntar fuentes y descartar ruido, no para certificar corroboración. Por
+   eso el gate de entidad y el umbral alto; y por eso `real` suele quedar
+   chico (este canal habla mayormente de afirmaciones no verificables).
 3. **Revisión editorial** (humano): el piloto genera un reporte de la capa
    `real` con su evidencia para auditoría. El humano puede corregir cualquier
    fragmento (reclasificar). Las correcciones se guardan en la base y ganan a

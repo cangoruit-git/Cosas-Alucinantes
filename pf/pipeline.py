@@ -74,7 +74,7 @@ def ingest_video(
         if skip_verify:
             provision = classify_text(chunk.text).provision
             # sin verificación, un candidato no puede ser 'real': queda sin_confirmar
-            tier = "real" if False else (provision if provision != TIER_CANDIDATE else "sin_confirmar")
+            tier = provision if provision != TIER_CANDIDATE else "sin_confirmar"
             evidences: list[Evidence] = []
         else:
             tier, evidences = verify_fn(chunk.text)

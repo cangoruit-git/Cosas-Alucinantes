@@ -11,7 +11,7 @@ Cobertura:
 from __future__ import annotations
 
 from pf.catalog import Video
-from pf.pipeline import ingest_video
+from pf.pipeline import ingest_video, resolve_without_verify
 from pf.transcribe import Segment, Transcript
 from pf.verify import Evidence
 
@@ -68,12 +68,15 @@ class FakeVStore:
     def __init__(self):
         self.upserts: list[tuple[str, str, list[Evidence] | None]] = []
         self.deleted: list[str] = []
+        self.events: list[str] = []
 
     def upsert_chunk(self, chunk, tier, evidences=None) -> str:
+        self.events.append("upsert")
         self.upserts.append((chunk.video_id, tier, evidences))
         return f"{tier}:{chunk.video_id}:{chunk.index}"
 
     def delete_video(self, video_id: str) -> int:
+        self.events.append("delete")
         self.deleted.append(video_id)
         return 0
 
@@ -147,10 +150,22 @@ check(
     store3.deleted == ["t1", "t1"],
     f"got {store3.deleted}",
 )
+check(
+    "re-ingesta: delete ANTES del upsert",
+    store3.events[:2] == ["delete", "upsert"],
+    f"got {store3.events[:3]}",
+)
 
 # 4. transcript vacío -> reporte sin fragmentos
 r = ingest_video(Transcript("t1", 0.0, [], "test"), VIDEO, FakeVStore(), verify_fn=fake_verify)
 check("transcript vacío: 0 chunks", r.chunks == 0, f"got {r.chunks}")
+
+# 5. resolve_without_verify: sin verificación, un candidato NUNCA es real
+check(
+    "resolve_without_verify: candidato -> sin_confirmar",
+    resolve_without_verify("posible_real") == "sin_confirmar",
+)
+check("resolve_without_verify: creencia se mantiene", resolve_without_verify("creencia") == "creencia")
 
 if fallos:
     print(f"PIPELINE_TESTS: {fallos} fallos")
