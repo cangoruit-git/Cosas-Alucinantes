@@ -20,8 +20,8 @@ import logging
 
 from pf import config
 from pf.catalog import ChannelCatalog
-from pf.pipeline import ingest_video
-from pf.store import VectorStore
+from pf.pipeline import ingest_video  # type: ignore[import-not-found]
+from pf.store import VectorStore  # type: ignore[import-not-found]
 from pf.themes import PILOT_THEME
 from pf.transcribe import load_transcript
 
